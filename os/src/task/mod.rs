@@ -54,6 +54,7 @@ lazy_static! {
         let mut tasks = [TaskControlBlock {
             task_cx: TaskContext::zero_init(),
             task_status: TaskStatus::UnInit,
+            called_times: Default::default(),
         }; MAX_APP_NUM];
         for (i, task) in tasks.iter_mut().enumerate() {
             task.task_cx = TaskContext::goto_restore(init_app_cx(i));
@@ -135,6 +136,48 @@ impl TaskManager {
             panic!("All applications completed!");
         }
     }
+
+    /// Increment write syscall count for current task
+    pub fn inc_write_count(&self) {
+        let mut inner = self.inner.exclusive_access();
+        let current = inner.current_task;
+        inner.tasks[current].called_times.write_c += 1;
+    }
+
+    /// Increment exit syscall count for current task
+    pub fn inc_exit_count(&self) {
+        let mut inner = self.inner.exclusive_access();
+        let current = inner.current_task;
+        inner.tasks[current].called_times.exit_c += 1;
+    }
+
+    /// Increment yield syscall count for current task
+    pub fn inc_yield_count(&self) {
+        let mut inner = self.inner.exclusive_access();
+        let current = inner.current_task;
+        inner.tasks[current].called_times.yield_c += 1;
+    }
+
+    /// Increment get_time syscall count for current task
+    pub fn inc_get_time_count(&self) {
+        let mut inner = self.inner.exclusive_access();
+        let current = inner.current_task;
+        inner.tasks[current].called_times.get_time_c += 1;
+    }
+
+    /// Increment trace syscall count for current task
+    pub fn inc_trace_count(&self) {
+        let mut inner = self.inner.exclusive_access();
+        let current = inner.current_task;
+        inner.tasks[current].called_times.trace_c += 1;
+    }
+
+    /// Get the called times of current `Running` task
+    pub fn get_current_called_times(&self) -> task::CalledTimes {
+        let inner = self.inner.exclusive_access();
+        let current = inner.current_task;
+        inner.tasks[current].called_times
+    }
 }
 
 /// Run the first task in task list.
@@ -168,4 +211,34 @@ pub fn suspend_current_and_run_next() {
 pub fn exit_current_and_run_next() {
     mark_current_exited();
     run_next_task();
+}
+
+/// Increment write syscall count for current task
+pub fn inc_write_count() {
+    TASK_MANAGER.inc_write_count();
+}
+
+/// Increment exit syscall count for current task
+pub fn inc_exit_count() {
+    TASK_MANAGER.inc_exit_count();
+}
+
+/// Increment yield syscall count for current task
+pub fn inc_yield_count() {
+    TASK_MANAGER.inc_yield_count();
+}
+
+/// Increment get_time syscall count for current task
+pub fn inc_get_time_count() {
+    TASK_MANAGER.inc_get_time_count();
+}
+
+/// Increment trace syscall count for current task
+pub fn inc_trace_count() {
+    TASK_MANAGER.inc_trace_count();
+}
+
+/// Get the called times of current `Running` task
+pub fn get_current_called_times() -> task::CalledTimes {
+    TASK_MANAGER.get_current_called_times()
 }

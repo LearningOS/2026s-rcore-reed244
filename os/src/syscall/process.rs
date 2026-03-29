@@ -1,4 +1,5 @@
 //! Process management syscalls
+use crate::task::get_current_called_times;
 use crate::{
     task::{exit_current_and_run_next, suspend_current_and_run_next},
     timer::get_time_us,
@@ -42,25 +43,28 @@ pub fn sys_get_time(ts: *mut TimeVal, _tz: usize) -> isize {
 pub fn sys_trace(_trace_request: usize, _id: usize, _data: usize) -> isize {
     match _trace_request {
         0 => {
-            let addr = id as *const u8;
+            let addr = _id as *const u8;
             return unsafe { *addr as isize };
         }
         1 => {
-            let mut addr = id as *mut u8;
+            let addr = _id as *mut u8;
             unsafe {
                 // only write last byte
-                *addr = data as u8;
+                *addr = _data as u8;
                 return 0;
             }
         }
-        2 => match id {
-            64 => unsafe { called_times::WRITE },
-            93 => unsafe { called_times::EXIT },
-            124 => unsafe { called_times::YIELD },
-            169 => unsafe { called_times::GET_TIME },
-            410 => unsafe { called_times::TRACE },
-            _ => return -1,
-        },
+        2 => {
+            let called_times = get_current_called_times();
+            match _id {
+                64 => return called_times.write_c as isize,
+                93 => return called_times.exit_c as isize,
+                124 => return called_times.yield_c as isize,
+                169 => return called_times.get_time_c as isize,
+                410 => return called_times.trace_c as isize,
+                _ => return -1,
+            }
+        }
+        _ => return -1,
     }
-    return -1;
 }
